@@ -2,6 +2,7 @@ package ai.geodata;
 
 import ai.geodata.common.BoundingBox;
 import ai.geodata.common.Dimensions;
+import ai.geodata.conf.Configuration;
 import ai.geodata.g2t.GeoTransformation;
 import ai.geodata.util.GlobalGeodetic;
 import org.apache.log4j.Logger;
@@ -14,12 +15,13 @@ import java.util.*;
 
 public class GDAL2Tiles {
     Logger log = Logger.getLogger(GDAL2Tiles.class);
+    private Configuration conf = new Configuration();
 
-    public static int TILE_SIZE = 256;
-    public static int MAX_ZOOM_LEVEL = 32;
+    private int tileSize = 256;
+    private int maxZoomLevel = 32;
 
     private GlobalGeodetic geodetic = null;
-    private int tsize = TILE_SIZE;
+    private int tsize = tileSize;
 
     private double[] out_gt = null;
     private Dataset outDataset = null;
@@ -28,12 +30,15 @@ public class GDAL2Tiles {
 
     public GDAL2Tiles(String inputPath){
         gdal.AllRegister();
+        tileSize = Integer.parseInt(conf.get("tileSize"));
+        maxZoomLevel = Integer.parseInt(conf.get("maxZoomLevel"));
+
         if (transformRaster(inputPath)){
             this.bbox = new GeoTransformation(this.out_gt).getBounds(
                     new Dimensions<Integer>(outDataset.getRasterXSize(),
                             outDataset.getRasterYSize()));
         }
-        this.geodetic = new GlobalGeodetic(null, TILE_SIZE);
+        this.geodetic = new GlobalGeodetic(null, tileSize);
     }
 
     /**
@@ -90,7 +95,7 @@ public class GDAL2Tiles {
     public List<int[]> getZoomLevels(){
 //        this.tileswne = this.geodetic.tileLatLonBounds();
         List<int[]> tminmax = new LinkedList<int[]>();
-        for (int tz = 0; tz < MAX_ZOOM_LEVEL; tz++) {
+        for (int tz = 0; tz < maxZoomLevel; tz++) {
             int[] tminxy = this.geodetic.lonlatToTile(this.bbox.getMinimumX(), this.bbox.getMinimumY(), tz);
             int[] tmaxxy = this.geodetic.lonlatToTile(this.bbox.getMaximumX(), this.bbox.getMaximumY(), tz);
 

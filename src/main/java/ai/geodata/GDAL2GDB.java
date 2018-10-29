@@ -5,6 +5,7 @@
  */
 package ai.geodata;
 
+import ai.geodata.conf.Configuration;
 import org.gdal.ogr.*;
 import org.gdal.gdal.gdal;
 import org.apache.log4j.Logger;
@@ -17,13 +18,16 @@ import java.util.Map;
 
 public class GDAL2GDB {
     protected Logger log = Logger.getLogger(GDAL2GDB.class);
+    private Configuration conf = new Configuration();
 
     //遥感影像路径
-    private static String FIELD_IMAGE_PATH = " 地址";
+    private static String fieldImagePath;
+
     //读取GDB时返回的属性信息Map对应的Key
     public static String[] KEYS = {"imageFilesPath", "boundaryJson", "boundarySql"};
 
     public GDAL2GDB(){
+        fieldImagePath = conf.get("fieldImagePath");
         ogr.RegisterAll();
     }
 
@@ -55,14 +59,14 @@ public class GDAL2GDB {
             Layer featsClass = gdb.GetLayerByIndex(iLayer);
             FeatureDefn layerDefinition = featsClass.GetLayerDefn();
 
-            if (layerDefinition.GetFieldIndex(FIELD_IMAGE_PATH) < 0){
-                log.error(FIELD_IMAGE_PATH + " 属性缺失.");
+            if (layerDefinition.GetFieldIndex(fieldImagePath) < 0){
+                log.error(fieldImagePath + " 属性缺失.");
                 return null;
             }
 
             Feature feature;
             while((feature = featsClass.GetNextFeature()) != null){
-                imageFilesPath.add(feature.GetFieldAsString(FIELD_IMAGE_PATH));
+                imageFilesPath.add(feature.GetFieldAsString(fieldImagePath));
 
                 Geometry geom = feature.GetGeometryRef();
                 for (int igeo = 0; igeo < geom.GetGeometryCount(); igeo++) {

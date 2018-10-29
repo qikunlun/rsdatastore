@@ -7,8 +7,6 @@
 package ai.geodata;
 import org.apache.log4j.Logger;
 import org.gdal.gdal.gdal;
-import org.gdal.gdal.Dataset;
-import org.gdal.gdal.Driver;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,7 +18,6 @@ public class GDALTranslate {
     public GDALTranslate(){
         gdal.AllRegister();
     }
-
     /**
      * 将其他格式的影像转为GeoTiff格式
      * @param imgPath 其他格式的影像
@@ -61,27 +58,9 @@ public class GDALTranslate {
         return true;
     }
 
-    public boolean erdas2GTiff(String imgPath, String tiffPath){
-        Driver tiffDriver = gdal.GetDriverByName("GTiff");
-        Dataset inDataset = gdal.Open(imgPath, 0);
-        if (inDataset == null) {
-            System.err.println("GDALOpen failed - " + gdal.GetLastErrorNo());
-            System.err.println(gdal.GetLastErrorMsg());
-            return false;
-        }
-
-        Dataset outDataset = tiffDriver.CreateCopy(tiffPath, inDataset);
-        if (outDataset == null) {
-            System.err.println("Transform failed - " + gdal.GetLastErrorNo());
-            System.err.println(gdal.GetLastErrorMsg());
-            return false;
-        }
-        return true;
-    }
-
     public static void main(String[] args){
         GDALTranslate gdaltrans = new GDALTranslate();
-        gdaltrans.image2GTiff("F:\\TestData\\AR_005_1\\AR_005_1.img",
-                "F:\\TestData\\AR_005_1\\AR_005_1.tif");
+        gdaltrans.image2GTiff("C:\\data\\WRJ_430124102214_20170918_DOM.img",
+                "C:\\data\\WRJ_430124102214_20170918_DOM.tif");
     }
 }

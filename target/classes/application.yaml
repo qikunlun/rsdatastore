@@ -1,0 +1,8 @@
+hdfs:
+  defaultFS: hdfs://192.168.1.200:8020
+
+gdal:
+  fieldImagePath: "地址"
+  tileSize: 256
+  maxZoomLevel: 32
+

@@ -12,9 +12,11 @@ import java.net.URI;
 public class HDFSOperations {
     protected Logger log = Logger.getLogger(GDAL2GDB.class);
     private Configuration conf = new Configuration();
-
+    private ai.geodata.conf.Configuration rsconf = new ai.geodata.conf.Configuration();
+    private String defaultFS;
     public HDFSOperations(){
-        conf.set("fs.defaultFS", "hdfs://192.168.1.200:8020");
+        defaultFS = rsconf.get("defaultFS");
+        conf.set("fs.defaultFS", defaultFS);
     }
 
     public boolean putToHDFS(String localFilePath , String hdfsURL){
@@ -27,11 +29,12 @@ public class HDFSOperations {
                 return false;
             }
             //获取HDFS文件系统
-            FileSystem hdfs = FileSystem.get(URI.create("hdfs://192.168.174.128:9000"),conf);
+            FileSystem hdfs = FileSystem.get(URI.create(defaultFS),conf);
             if (hdfs.exists(new Path(hdfsURL))){
                 log.error(hdfsURL + "已经存在.");
                 return false;
             }
+
             outHDFS = hdfs.create(new Path(hdfsURL));
             IOUtils.copyBytes(inputLocal,outHDFS,4096,true);
             log.info(localFilePath + "上传成功.");
@@ -61,4 +64,5 @@ public class HDFSOperations {
         }
         return true;
     }
+
 }

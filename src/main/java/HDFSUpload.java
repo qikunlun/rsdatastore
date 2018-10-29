@@ -1,9 +1,6 @@
 import java.io.IOException;
 
-import ai.geodata.GDAL2Tiles;
-import ai.geodata.common.BoundingBox;
-import ai.geodata.common.GDAL2Thumbnail;
-import ai.geodata.common.coordinate.Coordinate;
+import ai.geodata.GDAL2Thumbnail;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;

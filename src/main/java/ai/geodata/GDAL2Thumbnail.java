@@ -4,7 +4,7 @@
  * @描述 生成影像缩略图
  */
 
-package ai.geodata.common;
+package ai.geodata;
 
 import org.apache.log4j.Logger;
 import org.gdal.gdal.Band;
@@ -13,8 +13,12 @@ import org.gdal.gdal.Driver;
 import org.gdal.gdal.gdal;
 import org.gdal.gdalconst.gdalconstConstants;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.*;
 import java.io.File;
-import java.util.UUID;
+import java.io.IOException;
+import java.util.*;
 
 public class GDAL2Thumbnail {
     protected Logger log = Logger.getLogger(GDAL2Thumbnail.class);
@@ -119,10 +123,11 @@ public class GDAL2Thumbnail {
         float buffer[] = new float[nCols];
         for (int k=0; k<bands.length; k++){
             Band band = inDataset.GetRasterBand(bands[k]);
+            Double nodata [] = new Double[1];
             for (int i=0; i<nRows; i++){
                 if(band.ReadRaster(0, i, nCols, 1, buffer) !=
                         gdalconstConstants.CE_None){
-                    log.error("Fail to read image.");
+                    log.error("影像数据的读取失败.");
                     return false;
                 }
                 for(int j=0; j<nCols; j++){
@@ -149,7 +154,6 @@ public class GDAL2Thumbnail {
         String bmpFileName = outputFileName;
         if (!gType.equals("BMP")){
             UUID uuid = UUID.randomUUID();
-
             String tempPath =System.getProperty("java.io.tmpdir");
             bmpFileName = tempPath + File.separator +  uuid.toString() + ".bmp";
         }
@@ -165,11 +169,12 @@ public class GDAL2Thumbnail {
         for (int k=0; k<bands.length; k++){
             Band bandWrite = bmpDataset.GetRasterBand(k+1);
             Band bandRead = inDataset.GetRasterBand(bands[k]);
+
             int offset, offsetY = 0;
             for (int i=0; i<nRows; i += stepSize){
                 if(bandRead.ReadRaster(0, i, nCols, 1, buffer) !=
                         gdalconstConstants.CE_None){
-                    log.error("Fail to read image.");
+                    log.error("读取影像数据失败.");
                     return false;
                 }
                 offset = 0;
@@ -184,7 +189,18 @@ public class GDAL2Thumbnail {
         bmpDataset.delete();
         driver.delete();
 
-        if(!gType.equals("BMP")) {
+        if(gType.equals("PNG")){
+            try {
+                BufferedImage source = ImageIO.read(new File(bmpFileName));
+                int color = getNoDataRGB(source);
+                Image image = makeColorTransparent(source, new Color(color));
+                BufferedImage transparent = imageToBufferedImage(image);
+                ImageIO.write(transparent, "PNG", new File(outputFileName));
+            }catch (IOException e){
+                log.error(e.getMessage(), e);
+                return false;
+            }
+        }else if(!gType.equals("BMP")) {
             Driver outDriver = gdal.GetDriverByName(gType);
             if (outDriver == null) {
                 log.error("Fail to create " + gType + " image driver");
@@ -193,18 +209,79 @@ public class GDAL2Thumbnail {
             Dataset outDataset = outDriver.CreateCopy(outputFileName, bmpDataset, 0);
             outDataset.delete();
         }
-
         inDataset.delete();
         return true;
     }
 
+    private static BufferedImage imageToBufferedImage(Image image) {
+        BufferedImage bufferedImage = new BufferedImage(image.getWidth(null),
+                image.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = bufferedImage.createGraphics();
+        g2.drawImage(image, 0, 0, null);
+        g2.dispose();
+        return bufferedImage;
+    }
+
+    public static Image makeColorTransparent(BufferedImage im, final Color color) {
+        ImageFilter filter = new RGBImageFilter() {
+            // the color we are looking for... Alpha bits are set to opaque
+            public int markerRGB = color.getRGB() | 0xFF000000;
+            public final int filterRGB(int x, int y, int rgb) {
+                if ((rgb | 0xFF000000) == markerRGB) {
+                    // Mark the alpha bits as zero - transparent
+                    return 0x00FFFFFF & rgb;
+                } else {
+                    // nothing to do
+                    return rgb;
+                }
+            }
+        };
+        ImageProducer ip = new FilteredImageSource(im.getSource(), filter);
+        return Toolkit.getDefaultToolkit().createImage(ip);
+    }
+
+    private int getNoDataRGB(BufferedImage source){
+        int [][] boundVals = new int[4][];
+        boundVals[0] = source.getRGB(0, 0, 1,
+                source.getHeight(), null, 0, source.getWidth());
+        boundVals[1] = source.getRGB(0, 0, source.getWidth(),
+                1, null, 0, source.getWidth());
+        boundVals[2] = source.getRGB(source.getWidth()-1, 0, 1,
+                source.getHeight(), null, 0, source.getWidth());
+        boundVals[3] = source.getRGB(0, source.getHeight()-1,
+                source.getWidth(),1, null, 0, source.getWidth());
+
+        Map<Integer, Integer> valueCount = countValuesMap(boundVals);
+        int rgbMax = 0, countMax = 0;
+        for (Integer val : valueCount.keySet()){
+            int curVal = valueCount.get(val);
+            if (curVal > countMax){
+                rgbMax = val;
+                countMax = curVal;
+            }
+        }
+        return  rgbMax;
+    }
+
+    private Map countValuesMap(int[][] array){
+        Map<Object, Integer> map = new HashMap<Object, Integer>();
+        for (int i=0; i<array.length; i++){
+            for (int j=0; j<array[i].length; j++){
+                int val = array[i][j];
+                Integer integer = map.get(val);
+                map.put(val, integer == null?1:integer+1);
+            }
+        }
+        return map;
+    }
+
+
     public static void main(String[] args){
-        String imgPath = "D:\\data\\WRJ_430124102214_20170918_DOM.tif";
-        String outPath = "D:\\data\\WRJ_430124102214_20170918_DOM.png";
-        String bmpPath = "D:\\data\\WRJ_430124102214_20170918_DOM.bmp";
+        String imgPath = "C:\\data\\WRJ_430124102214_20170918_DOM.tif";
+        String outPath = "C:\\data\\WRJ_430124102214_20170918_DOM.png";
 
         GDAL2Thumbnail thum = new GDAL2Thumbnail();
-        double scale = thum.getScale(imgPath,1024);
+        double scale = thum.getScale(imgPath,512);
         boolean status = thum.create(imgPath, outPath, 1, 2, 3, scale);
     }
 
